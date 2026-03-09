@@ -38,12 +38,12 @@ describe('End-to-end test', function () {
 
     const checkoutButton = await driver.findElement(By.id('checkout-button'));
     await checkoutButton.click(); // Click the checkout button
-    
+
     // Wait for the checkout page to load
     await driver.wait(
-    until.elementLocated(By.className('checkout-container')),
-    5000
-  );
+      until.elementLocated(By.className('checkout-container')),
+      5000
+    );
     const checkoutPageTitle = await driver.getTitle();
     expect(checkoutPageTitle).to.equal('Checkout'); // Check the page title after checkout
 

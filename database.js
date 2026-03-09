@@ -40,19 +40,16 @@ const items = [
 const query_items = 'SELECT * FROM items';
 const all_items = db.prepare(query_items).all();
 
-console.log(all_items);
+// console.log(all_items);
 
-if(all_items == 0) {
-
-
-	const insert_data = db.prepare("INSERT INTO items (name, price, image_url) VALUES(?, ?, ?)");
+if (all_items == 0) {
 
 
-	items.forEach((items) => {
-  
-		insert_data.run(items.name, items.price, items.image_url);
+    const insert_data = db.prepare("INSERT INTO items (name, price, image_url) VALUES(?, ?, ?)");
 
-	});
+    items.forEach((items) => {
+        insert_data.run(items.name, items.price, items.image_url);
+    });
 
 }
 
