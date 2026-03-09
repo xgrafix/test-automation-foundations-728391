@@ -1,9 +1,10 @@
 {
-  "name": "ai-animal-art",
+  "name": "test-automation",
   "version": "1.0.0",
-  "main": "server.js",
+  "description": "",
+  "main": "index.js",
   "scripts": {
-    "start": "node server.js",
+  "start": "node server.js",
     "unit-test": "npx mocha test/unit/*.js",
     "integration-test": "npx mocha test/integration/*.js",
     "ui-test": "npx mocha test/UI/*.js",
@@ -13,21 +14,23 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "type": "commonjs",
   "dependencies": {
-    "body-parser": "^2.2.0",
-    "chai": "^5.2.0",
-    "chai-http": "^5.1.1",
-    "ejs": "^3.1.10",
-    "express": "^5.1.0",
-    "mocha": "^10.2.0",
-    "selenium-webdriver": "^4.31.0",
-    "sinon": "^20.0.0",
-    "sqlite3": "^5.1.7",
-    "supertest": "^7.1.0"
+    "better-sqlite3": "^12.6.2",
+    "body-parser": "^2.2.2",
+    "chai": "^6.2.2",
+    "chai-http": "^5.1.2",
+    "ejs": "^4.0.1",
+    "express": "^5.2.1",
+    "mocha": "github:mochajs/mocha",
+    "run": "^1.5.0",
+    "selenium-webdriver": "^4.41.0",
+    "sinon": "^21.0.1",
+    "supertest": "^7.2.2"
   },
   "devDependencies": {
-    "chromedriver": "^135.0.4",
+    "chromedriver": "^135",
     "nyc": "^17.1.0"
   }
+
 }

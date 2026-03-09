@@ -1,5 +1,6 @@
-const { Builder, By, until } = require('selenium-webdriver');
-const chrome = require('selenium-webdriver/chrome'); // Import Chrome options
+const Chrome = require('selenium-webdriver/chrome');
+const { Browser, By, Builder, until } = require("selenium-webdriver");
+
 const chai = require('chai');
 const { expect } = chai;
 
@@ -8,13 +9,13 @@ describe('End-to-end test', function () {
   let driver;
 
   before(async () => {
-    const options = new chrome.Options();
+    const options = new Chrome.Options();
     options.addArguments('--headless'); // Run in headless mode
     options.addArguments('--disable-gpu'); // Disable GPU acceleration
 
-    driver = await new Builder()
-      .forBrowser('chrome')
-      .setChromeOptions(options)
+    driver = new Builder()
+      .forBrowser(Browser.CHROME)
+      .setChromeOptions(options.addArguments('--headless=new'))
       .build();
 
     await driver.get('http://localhost:3000'); // Navigate to the homepage

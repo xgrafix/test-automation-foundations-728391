@@ -1,35 +1,30 @@
-const sqlite3 = require('sqlite3').verbose();
+const Database = require('better-sqlite3');
 
-const db = new sqlite3.Database('./shop.db');
+const db = new Database('shop.db', { verbose: console.log });
 
-db.serialize(() => {
-
-  // Create items table
-  db.run(`
+const items_query = `
     CREATE TABLE IF NOT EXISTS items (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL UNIQUE,
-      price REAL NOT NULL,
-      image_url TEXT NOT NULL
+    	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	name TEXT NOT NULL UNIQUE,
+	price REAL NOT NULL,
+	image_url TEXT NOT NULL
     )
-  `, (err) => {
-    if (err) 
-      console.error('Error creating items table:', err.message);
-  });
+`;
 
-  db.run(`
-    CREATE TABLE IF NOT EXISTS cart (
+db.exec(items_query);
+
+const cart_query = `
+      CREATE TABLE IF NOT EXISTS cart (
       item_id INTEGER NOT NULL,
       quantity INTEGER NOT NULL,
       PRIMARY KEY (item_id)
     )
-  `, (err) => {
-    if (err)
-      console.error('Error creating cart table:', err.message);
-  });
+`;
 
-  // Pre-load items into the database
-  const items = [
+db.exec(cart_query);
+
+// Pre-load items into the database
+const items = [
     { name: 'Dog', price: 5, image_url: '/images/dog.jpeg' },
     { name: 'Cat', price: 6, image_url: '/images/cat.jpeg' },
     { name: 'Fox', price: 5, image_url: '/images/fox.jpeg' },
@@ -40,30 +35,25 @@ db.serialize(() => {
     { name: 'Tiger', price: 7, image_url: '/images/tiger.jpeg' },
     { name: 'Zebra', price: 7, image_url: '/images/zebra.jpeg' },
     { name: 'Bunny', price: 5, image_url: '/images/bunny.jpeg' }
-  ];
+];
 
-  items.forEach((item) => {
-    db.get('SELECT * FROM items WHERE name = ?', [item.name], (err, row) => {
-      if (err) {
-        console.error(`Error checking item existence for ${item.name}:`, err.message);
-        return;
-      }
+const query_items = 'SELECT * FROM items';
+const all_items = db.prepare(query_items).all();
 
-      if (!row) {
-        db.run(
-          'INSERT INTO items (name, price, image_url) VALUES (?, ?, ?)',
-          [item.name, item.price, item.image_url],
-          (err) => {
-            if (err) {
-              console.error(`Error inserting item ${item.name}:`, err.message);
-            } else {
-              console.log(`Inserted item: ${item.name}`);
-            }
-          }
-        );
-      }
-    });
-  });
-});
+console.log(all_items);
+
+if(all_items == 0) {
+
+
+	const insert_data = db.prepare("INSERT INTO items (name, price, image_url) VALUES(?, ?, ?)");
+
+
+	items.forEach((items) => {
+  
+		insert_data.run(items.name, items.price, items.image_url);
+
+	});
+
+}
 
 module.exports = db;

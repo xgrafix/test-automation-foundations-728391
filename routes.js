@@ -4,32 +4,38 @@ const calculateTotalPrice = require('./middleware/calculateTotalPrice');
 
 module.exports = (app, db) => {
 
-    // Use the middleware for routes that need cart quantities
-    app.use(getCartQuantities());
+  // Use the middleware for routes that need cart quantities
+  app.use(getCartQuantities());
 
-    // Home route
-    app.get('/', (req, res, next) => {
-        // Fetch items in the cart
-        const query = `
-        SELECT items.id AS id, items.name, items.price, cart.quantity
-        FROM cart
-        JOIN items ON cart.item_id = items.id
+	app.get('/', (req, res, next) => {
+		//res.send('Hello World!')
+		//const query = 'SELECT * FROM items';
+		const cartQuery = `
+    SELECT items.id as id, items.name, items.price, cart.quantity
+    FROM cart
+    JOIN items ON cart.item_id = items.id
     `;
-        db.all(query, (err, cartItems) => {
-            if (err) {
-                return res.status(500).send('Error fetching cart items');
-            }
 
-            req.items = cartItems; // Attach cart items to req
-            next(); // Pass control to the getCartQuantities middleware
-        });
-    }, getCartQuantities(), (req, res) => {
-        db.all('SELECT * FROM items', (err, items) => {
-            if (err) {
-                return res.status(500).send('Internal Server Error');
-            }
+    const cartItems = db.prepare(cartQuery).all();
+    //let cartItems;
 
-            const cartCount = req.items.reduce((sum, item) => sum + item.quantity, 0); // Calculate cartCount
+    if(!cartItems) {
+        return res.status(500).send('Error fetching cart items');
+    }
+
+    req.items = cartItems;
+    next();
+	
+  }, getCartQuantities(), (req, res) => {
+      const cartItemsQuery  = 'SELECT * FROM items';
+      const items = db.prepare(cartItemsQuery).all();
+
+      if(!items) {
+        return res.status(500).send('Internal Server Error');
+      }
+
+      const cartCount = req.items.reduce((sum, item) => sum + item.quantity, 0); // Calculate cartCount
+      console.log("cart Count" + cartCount);
             res.render('index', {
                 items,
                 cartQuantities: req.cartQuantities, // Use cart quantities from middleware
@@ -37,82 +43,93 @@ module.exports = (app, db) => {
                 cartCount,
                 message: req.query.message // Get the message from the query string
             });
+    }
+  );
+
+  //Remove item route
+  app.get('/remove', (req, res) => {
+        const itemsQuery = 'SELECT * FROM items';
+        const items = db.prepare(itemsQuery).all();
+
+        if(!items) {
+          return res.status(500).send('Error fetching items');
+        }
+
+        const cartSumQuery = 'SELECT SUM(quantity) AS count FROM cart WHERE quantity > 0';
+        const row = db.prepare(cartSumQuery).all();
+
+        console.log('row count ' + row[0]['count']);
+
+        const cartCount = row[0]['count'] || 0;
+        res.render('index', {
+            items,
+            cartQuantities: req.cartQuantities,
+            showRemoveForm: true,
+            cartCount
         });
+
+       // res.json(row);
+
     });
 
-    //Remove item route
-    app.get('/remove', (req, res) => {
-        db.all('SELECT * FROM items', (err, items) => {
-            if (err) {
-                return res.status(500).send('Error fetching items');
-            }
-
-            db.get('SELECT SUM(quantity) AS count FROM cart WHERE quantity > 0', (err, row) => {
-                if (err) {
-                    return res.status(500).send('Error fetching cart count');
-                }
-
-                const cartCount = row.count || 0;
-                res.render('index', {
-                    items,
-                    cartQuantities: req.cartQuantities, // Use cart quantities from middleware
-                    showRemoveForm: true,
-                    cartCount
-                });
-            });
-        });
-    });
 
     // Add item to cart route
-    app.post('/add-to-cart', validateInput, (req, res) => {
+  app.post('/add-to-cart', validateInput, (req, res) => {
         const { itemId } = req.body;
 
-        db.get('SELECT quantity FROM cart WHERE item_id = ?', [itemId], (err, row) => {
-            if (err) {
-                return res.status(500).send('Error querying cart');
+        const row = db.prepare('SELECT quantity FROM cart where item_id = ?')
+                      .pluck()
+                      .get(itemId);
+
+        try {
+
+        if(row) {
+            if(row < 10) {
+                const update_row = db.prepare('UPDATE cart SET quantity = quantity + 1 WHERE item_id = ?');
+
+                update_row.run(parseInt(itemId));
+
+                res.redirect('/?message=Item+successfully+added+to+cart');
             }
-            if (row) {
-                if (row.quantity < 10) {
-                    db.run('UPDATE cart SET quantity = quantity + 1 WHERE item_id = ?', [itemId], (err) => {
-                        if (err) {
-                            return res.status(500).send('Error updating cart');
-                        }
-                        res.redirect('/?message=Item+successfully+added+to+cart');
-                    });
-                } else {
-                    res.redirect('/?message=Item+already+at+max+quantity');
-                }
-            } else {
-                db.run('INSERT INTO cart (item_id, quantity) VALUES (?, 1)', [itemId], (err) => {
-                    if (err) {
-                        return res.status(500).send('Error inserting into cart');
-                    }
-                    res.redirect('/?message=Item+successfully+added+to+cart');
-                });
+            else {
+                res.redirect('/?message=Item+already+at+max+quantity');
             }
-        });
+          } else {
+                const insert_row = db.prepare('INSERT INTO cart (item_id, quantity) VALUES (?, 1)');
+
+                insert_row.run(itemId);
+
+                res.redirect('/?message=Item+successfully+added+to+cart');
+            }
+    }
+    catch (error) {
+      return res.status(500).send('Error querying cart');
+    }
+      
     });
 
-    // Remove item from database route
     app.post('/remove-item', (req, res) => {
         const { itemId } = req.body; // Assuming the item ID is sent in the request body
 
         // Remove the item from the items table
-        db.run('DELETE FROM items WHERE id = ?', [itemId], (err) => {
-            if (err) {
-                return res.status(500).send('Error removing item');
-            }
+        const delete_item_id = db.prepare('DELETE FROM items WHERE id = ?');
+        delete_item_id.run(itemId);
+
+            if (!delete_item_id) {
+                //return res.status(500).send('Error removing item');
 
             // Remove the corresponding entry from the cart table
-            db.run('DELETE FROM cart WHERE item_id = ?', [itemId], (err) => {
-                if (err) {
+              const remove_from_cart = db.prepare('DELETE FROM cart WHERE item_id = ?');
+              remove_from_cart.run(itemId);
+          
+              if (!remove_from_cart) {
                     return res.status(500).send('Error removing item from cart');
-                }
+              }
 
                 res.redirect('/'); // Redirect back to the home page after deletion
-            });
-        });
-    });
+            }
+  });
+
 
     // Update item quantity in cart route
     app.post('/update-quantity', (req, res) => {
@@ -127,40 +144,37 @@ module.exports = (app, db) => {
 
         if (validQuantity === 0) {
             // Remove the item from the cart if quantity is 0
-            db.run('DELETE FROM cart WHERE item_id = ?', [itemId], (err) => {
-                if (err) {
+            const delete_item_from_cart = db.prepare('DELETE FROM cart WHERE item_id = ?');
+            delete_item_from_cart.run((itemId));
+            
+            if (!delete_item_from_cart) {
                     return res.status(500).send('Error updating quantity');
                 }
                 res.redirect('/cart');
-            });
-        } else {
+            }
+         else {
             // Update the quantity in the cart
-            db.run('UPDATE cart SET quantity = ? WHERE item_id = ?', [validQuantity, itemId], (err) => {
-                if (err) {
+            const update_item_quantity = db.prepare('UPDATE cart SET quantity = ? WHERE item_id = ?');
+            update_item_quantity.run(validQuantity, itemId);
+                if (!update_item_quantity) {
                     return res.status(500).send('Error updating quantity');
                 }
                 res.redirect('/cart');
-            });
         }
-    });
+      });
 
-    // Shopping cart route
-    app.get('/cart', (req, res, next) => {
-        // Fetch items in the cart
-        const query = `
+  app.get('/cart', (req, res, next) => {
+    const query = `
         SELECT items.id AS id, items.name, items.price, cart.quantity
         FROM cart
-        JOIN items ON cart.item_id = items.id
-    `;
-        db.all(query, (err, cartItems) => {
-            if (err) {
-                return res.status(500).send('Error fetching cart items');
-            }
+        JOIN items ON cart.item_id = items.id`
+        ;
+    
+    const cartItems = db.prepare(query).all();
+    req.items = cartItems;
+    next();
 
-            req.items = cartItems; // Attach cart items to req
-            next(); // Pass control to the getCartQuantities middleware
-        });
-    }, getCartQuantities(), calculateTotalPrice(), (req, res) => {
+  }, getCartQuantities(), calculateTotalPrice(), (req, res) => {
         // Render the cart page
         const cartCount = req.items.reduce((sum, item) => sum + item.quantity, 0); // Calculate cartCount
         res.render('cart', {
@@ -168,37 +182,38 @@ module.exports = (app, db) => {
             totalPrice: req.totalPrice,
             cartCount
         });
-    });
+  });
 
-    // Reset cart route
-    app.post('/reset-cart', (req, res) => {
-        db.run('DELETE FROM cart', (err) => {
-            if (err) {
-                return res.status(500).send('Error resetting the cart');
-            }
+  app.post('/reset-cart', (req, res) => {
+      const reset_cart = db.prepare('DELETE FROM cart');
+      reset_cart.run();
+      
+      if(!reset_cart) {
+        return res.status(500).send('Error removing all items');
+      }
 
-            // Redirect to the home page after resetting the cart
-            res.redirect('/');
-        });
-    });
+      res.redirect('/');
+  });
+
 
     // Checkout route
-    app.get('/checkout', (req, res, next) => {
+  app.get('/checkout', (req, res, next) => {
         // Fetch items in the cart
         const query = `
         SELECT items.id AS id, items.name, items.price, cart.quantity
         FROM cart
         JOIN items ON cart.item_id = items.id
-    `;
-        db.all(query, (err, cartItems) => {
-            if (err) {
+  `;
+      const cartItems = db.prepare(query).all();
+            if (!cartItems) {
                 return res.status(500).send('Error fetching cart items');
             }
 
             req.items = cartItems; // Attach cart items to req
             next(); // Pass control to the getCartQuantities middleware
-        });
-    }, getCartQuantities(), calculateTotalPrice(), (req, res) => {
+  }, getCartQuantities(), calculateTotalPrice(), (req, res) => {
         res.render('checkout', { totalPrice: req.totalPrice });
-    });
-};
+  });
+
+}
+
