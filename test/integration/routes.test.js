@@ -39,7 +39,7 @@ describe('Integration tests for routes', () => {
         // Seed initial data
         const insert_items = db.prepare("INSERT INTO items (id, name, price) VALUES(?, ?, ?)");
         await insert_items.run(1, "Test Item", 10.0);
-    //runQuery(db, 'INSERT INTO items (id, name, price) VALUES (1, "Test Item", 10.0)');
+        //runQuery(db, 'INSERT INTO items (id, name, price) VALUES (1, "Test Item", 10.0)');
     });
 
     after(async () => {
@@ -63,7 +63,7 @@ describe('Integration tests for routes', () => {
 
     it('should display the cart page', async () => {
         //await runQuery(db, 'INSERT INTO cart (item_id, quantity) VALUES (1, 2)');
-        
+
         const insert_items = db.prepare('INSERT INTO cart (item_id, quantity) VALUES (?, ?)');
         await insert_items.run(1, 2);
 
@@ -76,7 +76,7 @@ describe('Integration tests for routes', () => {
         //await runQuery(db, 'INSERT INTO cart (item_id, quantity) VALUES (1, 2)');
         const insert_items = db.prepare('INSERT INTO cart (item_id, quantity) VALUES (?, ?)');
         await insert_items.run(1, 2);
-        
+
         const res = await request(app).get('/checkout');
         expect(res.status).to.equal(200);
         expect(res.text).to.include('Thanks for your order!');
