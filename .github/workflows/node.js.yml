@@ -24,7 +24,7 @@ jobs:
     - uses: actions/setup-node@v6
       with:
         node-version: 25
-    - run: npm ci
+    - run: npm install
     - run: npm start &
     - run: npm run unit-test
     - run: npm run integration-test
