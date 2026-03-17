@@ -16,7 +16,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [24.x]
+        node-version: [25.x]
         # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
 
     steps:
@@ -25,6 +25,10 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: ${{ matrix.node-version }}
+        cache-dependency-path: package-lock.json
         cache: 'npm'
     - run: npm ci
-    - run: npm run build --if-present
+    - run: npm start &
+    - run: npm run unit-test
+    - run: npm run integration-test
+    - run: npm run ui-test
