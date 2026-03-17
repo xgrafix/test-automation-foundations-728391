@@ -20,11 +20,10 @@ jobs:
         # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
 
     steps:
-    - uses: actions/checkout@v4 # This must be the first step
-    - uses: actions/setup-node@v4
+    - uses: actions/checkout@v6
+    - uses: actions/setup-node@v6
       with:
-        node-version: '25'
-        cache: 'npm'
+        node-version: 25
     - run: npm ci
     - run: npm start &
     - run: npm run unit-test
